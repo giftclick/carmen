@@ -682,12 +682,11 @@
     }
 </style>
 <script>
-    // Crear el elemento de audio
     const audioPlayer = new Audio('./assets/music.mp3');
-    audioPlayer.autoplay = true;
     audioPlayer.loop = true;
     let isPlaying = false;
-    let userRejectedMusic = false; // Nueva bandera para evitar reproducción
+    let userRejectedMusic = false;
+    let userAcceptedMusic = false;
 
     // Blur overlay
     function showBlurOverlay() {
@@ -710,31 +709,36 @@
         }
     }
 
-    // Mostrar mensaje si no se puede reproducir automáticamente
+    // Mostrar el prompt
     function showMusicPrompt() {
         if (document.getElementById('music-autoplay-prompt')) return;
         showBlurOverlay();
+
         const prompt = document.createElement('div');
         prompt.id = 'music-autoplay-prompt';
-        prompt.innerHTML = '¿Quieres experiencia con música? <br><br><button id="music-yes" style="margin-left:10px;background:#fff;color:#fb6aba;border:none;border-radius:12px;padding:4px 12px;font-weight:bold;cursor:pointer;">Sí</button> <button id="music-no" style="margin-left:5px;background:#fff;color:#fb6aba;border:none;border-radius:12px;padding:4px 12px;font-weight:bold;cursor:pointer;">No</button>';
+        prompt.innerHTML = `
+            ¿Quieres experiencia con música? <br><br>
+            <button id="music-yes" style="margin-left:10px;background:#fff;color:#fb6aba;border:none;border-radius:12px;padding:4px 12px;font-weight:bold;cursor:pointer;">Sí</button>
+            <button id="music-no" style="margin-left:5px;background:#fff;color:#fb6aba;border:none;border-radius:12px;padding:4px 12px;font-weight:bold;cursor:pointer;">No</button>
+        `;
         document.body.appendChild(prompt);
 
         document.getElementById('music-yes').onclick = function () {
+            userAcceptedMusic = true;
             tryPlayAudio();
             prompt.remove();
             hideBlurOverlay();
         };
 
         document.getElementById('music-no').onclick = function () {
-            userRejectedMusic = true; // Guardar decisión del usuario
+            userRejectedMusic = true;
             prompt.remove();
             hideBlurOverlay();
         };
     }
 
-    // Intentar reproducir audio
     function tryPlayAudio() {
-        if (userRejectedMusic) return; // No hacer nada si el usuario dijo "No"
+        if (!userAcceptedMusic || userRejectedMusic) return;
 
         audioPlayer.play().then(() => {
             isPlaying = true;
@@ -748,32 +752,12 @@
         });
     }
 
-    // Fallback para dispositivos móviles
-    function setupMobileAutoplayFallback() {
-        ['touchstart', 'click'].forEach(evt => {
-            window.addEventListener(evt, function handler() {
-                if (!isPlaying && !userRejectedMusic) {
-                    tryPlayAudio();
-                    if (!isPlaying) showMusicPrompt();
-                }
-                window.removeEventListener(evt, handler, true);
-            }, true);
-        });
-    }
-
-    // Iniciar cuando la página se carga
     window.addEventListener('load', function () {
-        tryPlayAudio();
-
-        setTimeout(() => {
-            if (!isPlaying && !userRejectedMusic) {
-                showMusicPrompt();
-                setupMobileAutoplayFallback();
-            }
-        }, 800);
+        showMusicPrompt(); // Mostrar el prompt al cargar la página
     });
 
     document.getElementById('play-btn').addEventListener('click', function () {
+        userAcceptedMusic = true;
         tryPlayAudio();
     });
 
@@ -784,7 +768,6 @@
         document.getElementById('play-btn').style.display = 'flex';
     });
 
-    // Actualizar barra de progreso y tiempo
     function updateProgress() {
         if (isPlaying) {
             const progressBar = document.getElementById('progress-current');
@@ -807,7 +790,6 @@
         }
     }
 
-    // Permitir clic en la barra de progreso
     document.getElementById('progress-bar').addEventListener('click', function (e) {
         const rect = this.getBoundingClientRect();
         const x = e.clientX - rect.left;
@@ -824,7 +806,6 @@
         }
     });
 
-    // Mostrar duración cuando se carga la canción
     audioPlayer.addEventListener('loadedmetadata', function () {
         const minutes = Math.floor(audioPlayer.duration / 60);
         const seconds = Math.floor(audioPlayer.duration % 60);
@@ -833,5 +814,6 @@
             (seconds < 10 ? '0' + seconds : seconds);
     });
 </script>
+
 
 </html>
