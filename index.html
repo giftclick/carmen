@@ -387,7 +387,8 @@
     <img src="./assets/lazo2.webp" alt="Rosa decorativa" class="decorative-rose reveal" />
     <section class="section">
         <h1 class="title reveal">Celebración</h1>
-        <p class="text">La celebración se llevará a cabo el sábado 31 de mayo de 2025 a las 4:00PM.<br><br>Dirección: Av. Los Incas 1706, esquina con Diagonal Angamos</p>
+        <p class="text">La celebración se llevará a cabo el sábado 31 de mayo de 2025 a las 4:00PM.<br><br>Dirección:
+            Av. Los Incas 1706, esquina con Diagonal Angamos</p>
         <p class="text">Referencia: Antes de llegar al semáforo</p>
         <p class="text">Local: PARTYTIME</p>
 
@@ -449,7 +450,7 @@
             </footer>
         </div>
 
-
+    </div>
 </body>
 <script>
     const observer = new IntersectionObserver((entries) => {
@@ -647,44 +648,82 @@
 <script>
     // Crear el elemento de audio
     const audioPlayer = new Audio('./assets/music.mp3');
-    // Configurar para autoplay
     audioPlayer.autoplay = true;
+    audioPlayer.loop = true;
     let isPlaying = true;
 
-    // Función para iniciar la reproducción automáticamente
-    function initPlayer() {
-        // Intentar reproducir automáticamente
+    // Forzar reproducción en móviles: intentar en varios eventos de usuario
+    function tryPlayAudio() {
         audioPlayer.play().then(() => {
-            // Si se reproduce con éxito
             isPlaying = true;
             document.getElementById('play-btn').style.display = 'none';
             document.getElementById('pause-btn').style.display = 'flex';
             updateProgress();
-        }).catch(error => {
-            // Si falla el autoplay (políticas de navegador)
-            console.log("Autoplay prevented:", error);
+        }).catch(() => {
             isPlaying = false;
             document.getElementById('play-btn').style.display = 'flex';
             document.getElementById('pause-btn').style.display = 'none';
         });
     }
 
+    // Mostrar mensaje si no se puede reproducir automáticamente
+    function showMusicPrompt() {
+        if (document.getElementById('music-autoplay-prompt')) return;
+        const prompt = document.createElement('div');
+        prompt.id = 'music-autoplay-prompt';
+        prompt.style.position = 'fixed';
+        prompt.style.top = '10px';
+        prompt.style.left = '50%';
+        prompt.style.transform = 'translateX(-50%)';
+        prompt.style.background = 'rgba(251,106,186,0.95)';
+        prompt.style.color = '#fff';
+        prompt.style.padding = '10px 18px';
+        prompt.style.borderRadius = '20px';
+        prompt.style.fontSize = '16px';
+        prompt.style.zIndex = '99999';
+        prompt.style.boxShadow = '0 2px 12px rgba(0,0,0,0.13)';
+        prompt.innerHTML = '¿Quieres experiencia con música? <button id="music-yes" style="margin-left:10px;background:#fff;color:#fb6aba;border:none;border-radius:12px;padding:4px 12px;font-weight:bold;cursor:pointer;">Sí</button> <button id="music-no" style="margin-left:5px;background:#fff;color:#fb6aba;border:none;border-radius:12px;padding:4px 12px;font-weight:bold;cursor:pointer;">No</button>';
+        document.body.appendChild(prompt);
+
+        document.getElementById('music-yes').onclick = function () {
+            tryPlayAudio();
+            prompt.remove();
+        };
+        document.getElementById('music-no').onclick = function () {
+            prompt.remove();
+        };
+    }
+
+    // Intentar reproducir en varios eventos de usuario
+    function setupMobileAutoplayFallback() {
+        ['touchstart', 'click'].forEach(evt => {
+            window.addEventListener(evt, function handler() {
+                if (!isPlaying) {
+                    tryPlayAudio();
+                    if (!isPlaying) showMusicPrompt();
+                }
+                window.removeEventListener(evt, handler, true);
+            }, true);
+        });
+    }
+
     // Iniciar cuando la página se carga
-    window.addEventListener('load', initPlayer);
+    window.addEventListener('load', function () {
+        tryPlayAudio();
+        // Si no se pudo, mostrar prompt y fallback
+        setTimeout(() => {
+            if (!isPlaying) {
+                showMusicPrompt();
+                setupMobileAutoplayFallback();
+            }
+        }, 800);
+    });
 
     document.getElementById('play-btn').addEventListener('click', function () {
-        // Reproducir la canción
-        audioPlayer.play();
-        isPlaying = true;
-        document.getElementById('play-btn').style.display = 'none';
-        document.getElementById('pause-btn').style.display = 'flex';
-
-        // Iniciar actualización de progreso
-        updateProgress();
+        tryPlayAudio();
     });
 
     document.getElementById('pause-btn').addEventListener('click', function () {
-        // Pausar la canción
         audioPlayer.pause();
         isPlaying = false;
         document.getElementById('pause-btn').style.display = 'none';
@@ -696,30 +735,19 @@
         if (isPlaying) {
             const progressBar = document.getElementById('progress-current');
             const timeDisplay = document.getElementById('time-display');
-
-            // Actualizar cada 100ms
             const progressInterval = setInterval(function () {
                 if (!isPlaying) {
                     clearInterval(progressInterval);
                     return;
                 }
-
-                // Calcular porcentaje de progreso
-                const percentage = (audioPlayer.currentTime / audioPlayer.duration) * 100;
-                progressBar.style.width = percentage + '%';
-
-                // Formatear y mostrar tiempo
-                const minutes = Math.floor(audioPlayer.currentTime / 60);
-                const seconds = Math.floor(audioPlayer.currentTime % 60);
-                timeDisplay.textContent =
-                    (minutes < 10 ? '0' + minutes : minutes) + ':' +
-                    (seconds < 10 ? '0' + seconds : seconds);
-
-                // Si termina la canción
-                if (audioPlayer.ended) {
-                    // Al terminar, empezar de nuevo
-                    audioPlayer.currentTime = 0;
-                    audioPlayer.play();
+                if (audioPlayer.duration) {
+                    const percentage = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+                    progressBar.style.width = percentage + '%';
+                    const minutes = Math.floor(audioPlayer.currentTime / 60);
+                    const seconds = Math.floor(audioPlayer.currentTime % 60);
+                    timeDisplay.textContent =
+                        (minutes < 10 ? '0' + minutes : minutes) + ':' +
+                        (seconds < 10 ? '0' + seconds : seconds);
                 }
             }, 100);
         }
@@ -732,19 +760,15 @@
         const x = e.clientX - rect.left;
         const width = rect.width;
         const percentage = (x / width);
-
-        // Actualizar posición de reproducción
-        audioPlayer.currentTime = percentage * audioPlayer.duration;
-
-        // Actualizar visualmente
-        document.getElementById('progress-current').style.width = (percentage * 100) + '%';
-
-        // Actualizar tiempo
-        const minutes = Math.floor(audioPlayer.currentTime / 60);
-        const seconds = Math.floor(audioPlayer.currentTime % 60);
-        document.getElementById('time-display').textContent =
-            (minutes < 10 ? '0' + minutes : minutes) + ':' +
-            (seconds < 10 ? '0' + seconds : seconds);
+        if (audioPlayer.duration) {
+            audioPlayer.currentTime = percentage * audioPlayer.duration;
+            document.getElementById('progress-current').style.width = (percentage * 100) + '%';
+            const minutes = Math.floor(audioPlayer.currentTime / 60);
+            const seconds = Math.floor(audioPlayer.currentTime % 60);
+            document.getElementById('time-display').textContent =
+                (minutes < 10 ? '0' + minutes : minutes) + ':' +
+                (seconds < 10 ? '0' + seconds : seconds);
+        }
     });
 
     // Actualizar cuando la canción se carga
